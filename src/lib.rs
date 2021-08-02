@@ -60,7 +60,7 @@ impl CallStackStats {
         }
     }
 
-    fn format_totals(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+    fn format_totals<W: fmt::Write>(&self, f: &mut W) -> Result<(), fmt::Error> {
         match self {
             CallStackStats::Summary(self_calls, self_bytes) => {
                 f.write_str(format!("{}calls, {}B", *self_calls, *self_bytes).as_str())
@@ -85,8 +85,7 @@ pub struct Profile {
 
 impl Display for Profile {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        let summary = self.summarize();
-        self.format_summary(&summary, "", f)
+        self.fmt_with_threshold(0.0, f)
     }
 }
 
@@ -243,11 +242,19 @@ impl Profile {
         stats
     }
 
-    fn format_summary<'a, T: Clone + TrieCommon<'a, CallStack, CallStackStats>>(
+    pub fn fmt_with_threshold<W: fmt::Write>(&self, threshold: f64, f: &mut W) -> Result<(), fmt::Error> {
+        let summary = self.summarize();
+        let total_calls = trie_children_with_keys(&summary).next().unwrap().value().unwrap().num_calls();
+        self.format_summary(&summary, total_calls, threshold, "", f)
+    }
+
+    fn format_summary<'a, T: Clone + TrieCommon<'a, CallStack, CallStackStats>, W: fmt::Write>(
         &self,
         stats: T,
+        total_calls: usize,
+        threshold: f64,
         prefix: &str,
-        f: &mut Formatter<'_>,
+        f: &mut W,
     ) -> Result<(), fmt::Error> {
         let has_key = stats.clone().key().is_some();
         if has_key {
@@ -270,12 +277,22 @@ impl Profile {
                 .cmp(&c1.value().unwrap().num_calls())
         });
 
+
+        let mut below_threshold = 0;
         for (idx, child) in children_sorted.iter().enumerate() {
-            if idx == nchildren - 1 {
-                self.format_summary(child, format!("{} ", prefix).as_str(), f)?;
-            } else {
-                self.format_summary(child, format!("{}|", prefix).as_str(), f)?;
+            if 100.0 * (child.value().unwrap().num_calls() as f64)/(total_calls as f64) < threshold {
+                below_threshold += child.value().unwrap().num_calls();
+                continue;
             }
+            if idx == nchildren - 1 {
+                self.format_summary(child, total_calls, threshold, format!("{}  ", prefix).as_str(), f)?;
+            } else {
+                self.format_summary(child, total_calls, threshold, format!("{} |", prefix).as_str(), f)?;
+            }
+        };
+
+        if below_threshold > 0 {
+            f.write_str(format!("\n{}  ->{} calls in places below mf_print threshold ({}%)", prefix, below_threshold, threshold).as_str())?;
         }
 
         Ok(())
