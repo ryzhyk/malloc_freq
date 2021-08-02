@@ -2,3 +2,4 @@
 Cargo.lock
 src/*.swp
 /*.swp
+malloc_freq*

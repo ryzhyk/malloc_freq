@@ -3,6 +3,10 @@ name = "malloc_freq"
 version = "0.1.0-alpha.0"
 authors = ["Leonid Ryzhyk <lryzhyk@vmware.com>"]
 edition = "2018"
+license = "MIT"
+license-file = "LICENSE"
+repository = "https://github.com/ryzhyk/malloc_freq/"
+description = "Malloc frequency profiler"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -347,7 +347,21 @@ thread_local! {
     pub static NESTED: RefCell<bool> = RefCell::new(false);
 }
 
-struct ProfAllocator;
+/// Allocator that collects statistics about allocations performed
+/// by the program and dumps this statistics to the disk on exit.
+/// Use the [`std::alloc::global_allocator`]
+/// attribute to enable this allocator in your program:
+///
+/// ```
+/// use malloc_freq::ProfAllocator;
+///
+/// #[global_allocator]
+/// static GLOBAL: ProfAllocator = ProfAllocator;
+///
+/// fn main() {}
+/// ```
+///
+pub struct ProfAllocator;
 
 impl ProfAllocator {
     unsafe fn alloc_record(layout: Layout) {
