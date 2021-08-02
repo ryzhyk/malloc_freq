@@ -1,9 +1,8 @@
 [package]
 name = "malloc_freq"
-version = "0.1.0-alpha.0"
+version = "0.1.0-alpha.1"
 authors = ["Leonid Ryzhyk <lryzhyk@vmware.com>"]
 edition = "2018"
-license = "MIT"
 license-file = "LICENSE"
 repository = "https://github.com/ryzhyk/malloc_freq/"
 description = "Malloc frequency profiler"
@@ -20,7 +19,7 @@ backtrace = { version = "0.3", features = ["serialize-serde"] }
 args = "2.2"
 getopts = "0.2"
 anyhow = "1.0"
-glob = ""
+glob = "0.3"
 byteorder = "1.4"
 
 [[bin]]
