@@ -9,31 +9,29 @@ const PROGRAM_NAME: &str = "mf_print";
 
 fn main() -> Result<(), anyhow::Error> {
     let mut args = Args::new(PROGRAM_NAME, PROGRAM_DESC);
-    args.flag(
-        "h",
-        "help",
-        "Print a help message",
-    ).option(
-        "d",
-        "dir",
-        "Directory that stores target profile",
-        "DIR",
-        Occur::Optional,
-        None,
-    ).option(
-        "t",
-        "threshold",
-        "Significance threshold, in percent",
-        "<m.n>",
-        Occur::Optional,
-        Some("1.0".to_string()),
-    );
+    args.flag("h", "help", "Print a help message")
+        .option(
+            "d",
+            "dir",
+            "Directory that stores target profile",
+            "DIR",
+            Occur::Optional,
+            None,
+        )
+        .option(
+            "t",
+            "threshold",
+            "Significance threshold, in percent",
+            "<m.n>",
+            Occur::Optional,
+            Some("1.0".to_string()),
+        );
 
     args.parse_from_cli()?;
 
     if args.value_of::<bool>("help").unwrap() == true {
         println!("{}", args.full_usage());
-        return Ok(())
+        return Ok(());
     }
 
     let dir: String = args.value_of("dir")?;
@@ -53,7 +51,6 @@ fn main() -> Result<(), anyhow::Error> {
         let profile_bytes = fs::read(path)?;
         profiles.push(serde_yaml::from_slice::<Profile>(&profile_bytes[..])?);
     }
-
 
     // Aggregate per-thread profiles.
     let mut aggregate_profile = Profile::new();

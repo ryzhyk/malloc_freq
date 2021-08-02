@@ -14,6 +14,7 @@ use std::{
 
 use backtrace::SymbolName;
 use libc::{c_void, pthread_self};
+use num_format::{Locale, ToFormattedString};
 use radix_trie::{iter::Children, SubTrie, Trie, TrieCommon, TrieKey};
 use serde::{Deserialize, Serialize};
 
@@ -62,9 +63,14 @@ impl CallStackStats {
 
     fn format_totals<W: fmt::Write>(&self, f: &mut W) -> Result<(), fmt::Error> {
         match self {
-            CallStackStats::Summary(self_calls, self_bytes) => {
-                f.write_str(format!("{}calls, {}B", *self_calls, *self_bytes).as_str())
-            }
+            CallStackStats::Summary(self_calls, self_bytes) => f.write_str(
+                format!(
+                    "{} calls, {}B",
+                    self_calls.to_formatted_string(&Locale::en),
+                    self_bytes.to_formatted_string(&Locale::en)
+                )
+                .as_str(),
+            ),
             CallStackStats::Detailed(_) => self.summarize().format_totals(f),
         }
     }
@@ -242,9 +248,18 @@ impl Profile {
         stats
     }
 
-    pub fn fmt_with_threshold<W: fmt::Write>(&self, threshold: f64, f: &mut W) -> Result<(), fmt::Error> {
+    pub fn fmt_with_threshold<W: fmt::Write>(
+        &self,
+        threshold: f64,
+        f: &mut W,
+    ) -> Result<(), fmt::Error> {
         let summary = self.summarize();
-        let total_calls = trie_children_with_keys(&summary).next().unwrap().value().unwrap().num_calls();
+        let total_calls = trie_children_with_keys(&summary)
+            .next()
+            .unwrap()
+            .value()
+            .unwrap()
+            .num_calls();
         self.format_summary(&summary, total_calls, threshold, "", f)
     }
 
@@ -277,22 +292,41 @@ impl Profile {
                 .cmp(&c1.value().unwrap().num_calls())
         });
 
-
         let mut below_threshold = 0;
         for (idx, child) in children_sorted.iter().enumerate() {
-            if 100.0 * (child.value().unwrap().num_calls() as f64)/(total_calls as f64) < threshold {
+            if 100.0 * (child.value().unwrap().num_calls() as f64) / (total_calls as f64)
+                < threshold
+            {
                 below_threshold += child.value().unwrap().num_calls();
                 continue;
             }
             if idx == nchildren - 1 {
-                self.format_summary(child, total_calls, threshold, format!("{}  ", prefix).as_str(), f)?;
+                self.format_summary(
+                    child,
+                    total_calls,
+                    threshold,
+                    format!("{}  ", prefix).as_str(),
+                    f,
+                )?;
             } else {
-                self.format_summary(child, total_calls, threshold, format!("{} |", prefix).as_str(), f)?;
+                self.format_summary(
+                    child,
+                    total_calls,
+                    threshold,
+                    format!("{} |", prefix).as_str(),
+                    f,
+                )?;
             }
-        };
+        }
 
         if below_threshold > 0 {
-            f.write_str(format!("\n{}  ->{} calls in places below mf_print threshold ({}%)", prefix, below_threshold, threshold).as_str())?;
+            f.write_str(
+                format!(
+                    "\n{}  ->{} calls in places below mf_print threshold ({}%)",
+                    prefix, below_threshold, threshold
+                )
+                .as_str(),
+            )?;
         }
 
         Ok(())
