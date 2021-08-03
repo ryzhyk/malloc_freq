@@ -3,7 +3,7 @@ name = "malloc_freq"
 version = "0.1.0"
 authors = ["Leonid Ryzhyk <lryzhyk@vmware.com>"]
 edition = "2018"
-license-file = "LICENSE"
+license = "MIT"
 repository = "https://github.com/ryzhyk/malloc_freq/"
 description = "Malloc frequency profiler"
 
