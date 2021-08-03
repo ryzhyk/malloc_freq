@@ -76,8 +76,13 @@ To use `malloc_freq` via `LD_PRELOAD`, you will need to download and build this
 repository:
 
 ```
-git clone 
+git clone git@github.com:ryzhyk/malloc_freq.git
+cd malloc_freq
+cargo build --release --all
 ```
+
+Use the compiled `target/release/libmalloc_freq.so` library with `LD_PRELOAD`,
+as described above.
 
 ## TODOs
 
