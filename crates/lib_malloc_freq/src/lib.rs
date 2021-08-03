@@ -1,5 +1,5 @@
-use malloc_freq::ProfAllocator;
 use libc::c_void;
+use malloc_freq::ProfAllocator;
 
 #[no_mangle]
 pub unsafe extern "C" fn malloc(size: libc::size_t) -> *mut c_void {

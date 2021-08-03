@@ -29,7 +29,7 @@ fn main() -> Result<(), anyhow::Error> {
 
     args.parse_from_cli()?;
 
-    if args.value_of::<bool>("help").unwrap() == true {
+    if args.value_of::<bool>("help").unwrap() {
         println!("{}", args.full_usage());
         return Ok(());
     }
