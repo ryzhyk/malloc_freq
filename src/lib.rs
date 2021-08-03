@@ -181,7 +181,7 @@ impl Profile {
     }
 
     // Record a memory allocation of size `size` in the profile.
-    unsafe fn record_allocation(callstack: &Vec<usize>, size: usize) {
+    fn record_allocation(callstack: &Vec<usize>, size: usize) {
         // Ignore errors accessing the TLS when the thread is being destroyed.
         let _ = PROFILE.try_with(|profile| {
             let mut profile = profile.borrow_mut();
@@ -446,6 +446,16 @@ thread_local! {
     pub(crate) static NESTED: RefCell<bool> = RefCell::new(false);
 }
 
+static REAL_MALLOC: Lazy<MallocFunc> = Lazy::new(|| {
+    let real_malloc = unsafe { dlsym(RTLD_NEXT, b"malloc\0".as_ptr() as *const c_char) };
+    if real_malloc.is_null() {
+        panic!("malloc_freq: couldn't find original malloc");
+    };
+    unsafe { std::mem::transmute(real_malloc) }
+});
+
+type MallocFunc = unsafe extern "C" fn(size: libc::size_t) -> *mut c_void;
+
 /// Allocator that collects statistics about allocations performed
 /// by the program and dumps this statistics to the disk on exit.
 /// Use the `global_allocator`
@@ -463,15 +473,15 @@ thread_local! {
 pub struct ProfAllocator;
 
 impl ProfAllocator {
-    unsafe fn alloc_record(layout: Layout) {
+    fn alloc_record(layout: Layout) {
         Self::malloc_record(layout.size() as libc::size_t);
     }
 
-    unsafe fn malloc_record(size: libc::size_t) {
+    fn malloc_record(size: libc::size_t) {
         // Ignore errors accessing the TLS when the thread is being destroyed.
         let _ = CALL_STACK.try_with(|callstack| {
             let mut callstack = callstack.borrow_mut();
-            callstack.set_len(0);
+            callstack.clear();
             backtrace::trace(|frame| {
                 callstack.push(frame.ip() as usize);
                 callstack.len() < MAX_BACKTRACE
@@ -482,8 +492,13 @@ impl ProfAllocator {
 
     /// A replacement `malloc()` implementation that records each `malloc` call in the profile.
     /// When loaded via `LD_PRELOAD`, [`lib_malloc_freq`] redirects `malloc` calls to this method.
+    ///
+    /// # Safety
+    ///
+    /// This method internally uses [`libc::malloc`], which is `unsafe extern "C"`.
+    ///
     pub unsafe fn malloc(size: libc::size_t) -> *mut c_void {
-        let real_malloc: MallocFunc = std::mem::transmute(*REAL_MALLOC);
+        let real_malloc = *REAL_MALLOC;
         let res = NESTED.try_with(|nested| {
             if *nested.borrow() {
                 real_malloc(size)
@@ -502,16 +517,6 @@ impl ProfAllocator {
         }
     }
 }
-
-static REAL_MALLOC: Lazy<usize> = Lazy::new(|| {
-    let real_malloc = unsafe { dlsym(RTLD_NEXT, b"malloc\0".as_ptr() as *const c_char) };
-    if real_malloc.is_null() {
-        panic!("malloc_freq: couldn't find original malloc");
-    };
-    real_malloc as usize
-});
-
-type MallocFunc = unsafe extern "C" fn(size: libc::size_t) -> *mut c_void;
 
 unsafe impl GlobalAlloc for ProfAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
