@@ -13,10 +13,11 @@ use std::{
 };
 
 use backtrace::SymbolName;
-use libc::{c_void, pthread_self};
+use libc::{c_char, c_void, dlsym, pthread_self, RTLD_NEXT};
 use num_format::{Locale, ToFormattedString};
 use radix_trie::{iter::Children, SubTrie, Trie, TrieCommon, TrieKey};
 use serde::{Deserialize, Serialize};
+use once_cell::sync::Lazy;
 
 const MAX_BACKTRACE: usize = 128;
 
@@ -416,6 +417,10 @@ pub struct ProfAllocator;
 
 impl ProfAllocator {
     unsafe fn alloc_record(layout: Layout) {
+        Self::malloc_record(layout.size() as libc::size_t);
+    }
+
+    unsafe fn malloc_record(size: libc::size_t) {
         // Ignore errors accessing the TLS when the thread is being destroyed.
         let _ = CALL_STACK.try_with(|callstack| {
             let mut callstack = callstack.borrow_mut();
@@ -424,10 +429,41 @@ impl ProfAllocator {
                 callstack.push(frame.ip() as usize);
                 callstack.len() < MAX_BACKTRACE
             });
-            Profile::record_allocation(&callstack, layout.size());
+            Profile::record_allocation(&callstack, size);
         });
     }
+
+    pub unsafe fn malloc(size: libc::size_t) -> *mut c_void {
+        let real_malloc: MallocFunc = std::mem::transmute(*REAL_MALLOC);
+        let res = NESTED.try_with(|nested| {
+            if *nested.borrow() {
+                real_malloc(size)
+            } else {
+                *nested.borrow_mut() = true;
+                Self::malloc_record(size);
+                let res = real_malloc(size);
+                *nested.borrow_mut() = false;
+                res
+            }
+        });
+        match res {
+            Ok(res) => res,
+            // alloc called during thread destruction.
+            Err(..) => real_malloc(size)
+        }
+    }
 }
+
+static REAL_MALLOC: Lazy<usize> = Lazy::new(|| {
+    let real_malloc = unsafe { dlsym(RTLD_NEXT, b"malloc\0".as_ptr() as *const c_char) };
+    if real_malloc.is_null() {
+        panic!("malloc_freq: couldn't find original malloc");
+    };
+    real_malloc as usize
+});
+
+type MallocFunc = unsafe extern "C" fn (size: libc::size_t) -> *mut c_void;
+
 
 unsafe impl GlobalAlloc for ProfAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
