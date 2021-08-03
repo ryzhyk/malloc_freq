@@ -9,7 +9,7 @@ description = "Use malloc frequency profiler (malloc_freq) via LD_PRELOAD"
 
 [dependencies]
 
-malloc_freq = { path = "../../" }
+malloc_freq = { path = "../../" ,version = "0.1.0"}
 libc = "0.2"
 
 [lib]
