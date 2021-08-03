@@ -56,6 +56,29 @@ percents (profile entries with fewer than `threshold`% `malloc` calls are skippe
 calls, annotated with the number of `malloc` calls and the total number of bytes allocated by each
 stack trace.
 
+## Installation
+
+To install the `mf_print` executable:
+
+```
+cargo install malloc_freq
+```
+
+To use `malloc_freq` in your Rust program via the `global_allocator` attribute,
+simply include it as a dependency in your `Cargo.toml`:
+
+```
+[dependencies]
+malloc_freq = "0.1"
+```
+
+To use `malloc_freq` via `LD_PRELOAD`, you will need to download and build this
+repository:
+
+```
+git clone 
+```
+
 ## TODOs
 
 - Generate profile on abnormal program termination (e.g., panic or `SIGKILL`).

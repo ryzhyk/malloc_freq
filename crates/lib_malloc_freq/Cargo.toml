@@ -1,11 +1,11 @@
 [package]
 name = "lib_malloc_freq"
-version = "0.1.0-alpha.2"
+version = "0.1.0"
 authors = ["Leonid Ryzhyk <lryzhyk@vmware.com>"]
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/ryzhyk/malloc_freq/"
-description = "Use malloc frequency profiler via LD_PRELOAD"
+description = "Use malloc frequency profiler (malloc_freq) via LD_PRELOAD"
 
 [dependencies]
 
@@ -13,4 +13,5 @@ malloc_freq = { path = "../../" }
 libc = "0.2"
 
 [lib]
+name = "malloc_freq"
 crate-type = ["cdylib"]
